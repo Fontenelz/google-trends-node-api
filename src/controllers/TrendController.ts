@@ -73,6 +73,8 @@ trendRouter.get("/", async (req: Request, res: Response) => {
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+    const html = await page.content();
+    console.log("HTML RECEBIDO (prod):", html.slice(0, 1000));
 
     await page.waitForSelector("tr.enOdEe-wZVHld-xMbwt");
 
