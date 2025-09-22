@@ -1,5 +1,5 @@
 # 1️⃣ Stage de build
-FROM node:18-slim AS build
+FROM node:20-slim AS build
 
 # 2️⃣ Instala dependências do Chromium necessárias para Puppeteer
 RUN apt-get update && apt-get install -y \
@@ -29,7 +29,7 @@ RUN yarn build
 # =====================
 # 2️⃣ Stage de produção (menor e mais leve)
 # =====================
-FROM node:18-slim
+FROM node:20-slim
 
 # 1️⃣ Instala só dependências necessárias pro Puppeteer
 RUN apt-get update && apt-get install -y \
@@ -42,4 +42,5 @@ WORKDIR /app
 
 # 2️⃣ Copia node_modules e build do stage anterior
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist .
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/package.json ./package.json
