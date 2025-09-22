@@ -45,5 +45,11 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
+# Copia o script para o container
+COPY start.sh ./
+
+# Dá permissão de execução no build
+RUN chmod +x start.sh
+
 EXPOSE 3000 6379
-CMD ["node", "dist/index.js"]
+CMD ["./start.sh"] ["node", "dist/index.js"]
