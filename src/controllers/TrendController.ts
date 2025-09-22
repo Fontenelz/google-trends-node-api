@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import puppeteer from "puppeteer";
-import client from '../redis/client';
+import client, { connectRedis } from '../redis/client';
 
 interface Trend {
   id: string | null;
@@ -28,6 +28,8 @@ trendRouter.get('/', async (req: Request, res: Response) => {
   });
   
   const { categoria } = req.query;
+
+  const client = await connectRedis(); 
 
   const cacheKey = `trends:category:${ categoria ?? 0 }`;
   const cached = await client.get(cacheKey);
