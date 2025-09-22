@@ -33,11 +33,8 @@ trendRouter.get('/', async (req: Request, res: Response) => {
 
   const cacheKey = `trends:category:${ categoria ?? 0 }`;
   const cached = await client.get(cacheKey);
-  console.log(categoria);
   
   if (cached) {
-    console.log("✅ Cache hit para categoria:", categoria);
-    console.log(cached);
     browser.close();
     return JSON.parse(cached);
   }
