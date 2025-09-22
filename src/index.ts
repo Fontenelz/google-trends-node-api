@@ -95,6 +95,6 @@ app.get("/trends", async (req: Request, res: Response) => {
   res.json(data);
 });
 
-app.listen(PORT, () => {
-  log(`Server is running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server is running on port ${PORT}`);
 });
