@@ -16,15 +16,23 @@ trendRouter.get('/', async (req: Request, res: Response) => {
   // Puppeteer launch
   const browser = await puppeteer.launch({
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage", // evita usar /dev/shm pequeno em containers
+      "--disable-gpu",
+      "--disable-software-rasterizer"
+    ],
+    headless: true,
   });
   
   const { categoria } = req.query;
   const url = `https://trends.google.com.br/trending?geo=BR&category=${categoria}`;
 
   const page = await browser.newPage();
-
-  await page.goto(url, { waitUntil: "networkidle2" });
+  
+  await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+  page.on("console", msg => console.log("PAGE LOG:", msg.text()));
 
   await page.waitForSelector("tr.enOdEe-wZVHld-xMbwt");
 
