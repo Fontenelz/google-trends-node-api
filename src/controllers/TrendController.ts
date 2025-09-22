@@ -73,10 +73,9 @@ trendRouter.get("/", async (req: Request, res: Response) => {
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     page.on("console", msg => console.log("PAGE LOG:", msg.text()));
-    const html = await page.content();
-    console.log("HTML RECEBIDO (prod):", html.slice(0, 1000));
 
-    await page.waitForSelector("tr.enOdEe-wZVHld-xMbwt");
+    const row = await page.waitForSelector("tr[data-row-id], tr.enOdEe-wZVHld-xMbwt", { timeout: 8000 });
+    if (!row) throw new Error("Nenhum seletor válido encontrado");
 
     const data: Trend[] = await page.$$eval("tr.enOdEe-wZVHld-xMbwt", rows =>
       rows.map(row => {
@@ -107,9 +106,7 @@ trendRouter.get("/", async (req: Request, res: Response) => {
     );
 
     await client.setEx(cacheKey, 600, JSON.stringify(data));
-
     await page.close(); // fecha só a página, mantém browser vivo
-
     return res.json(data);
   } catch (err) {
     console.error(err);
