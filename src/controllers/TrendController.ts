@@ -16,22 +16,40 @@ interface Trend {
 
 export const trendRouter = Router();
 
-async function getBrowser() {
-  if (!browser) {
-    browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-software-rasterizer"
-      ],
-      headless: true,
-    });
-  }
+export async function getBrowser(): Promise<Browser> {
+  const browser = await puppeteer.launch({
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-software-rasterizer",
+      "--single-process",
+      "--no-zygote",
+      "--disable-extensions",
+      "--disable-infobars",
+      "--window-size=1920,1080"
+    ],
+    defaultViewport: { width: 1920, height: 1080 }
+  });
+
+  // Configura a primeira página com headers e user-agent
+  const [page] = await browser.pages();
+  await page.setExtraHTTPHeaders({
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
+  });
+
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+      "AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/114 Safari/537.36"
+  );
+
   return browser;
 }
+
 
 trendRouter.get("/", async (req: Request, res: Response) => {
   try {
