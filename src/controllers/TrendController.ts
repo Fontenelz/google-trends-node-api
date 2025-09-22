@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import puppeteer from "puppeteer";
+import client from '../redis/client';
 
 interface Trend {
   id: string | null;
@@ -27,6 +28,18 @@ trendRouter.get('/', async (req: Request, res: Response) => {
   });
   
   const { categoria } = req.query;
+
+  const cacheKey = `trends:category:${ categoria ?? 0 }`;
+  const cached = await client.get(cacheKey);
+  console.log(categoria);
+  
+  if (cached) {
+    console.log("✅ Cache hit para categoria:", categoria);
+    console.log(cached);
+    browser.close();
+    return JSON.parse(cached);
+  }
+
   const url = `https://trends.google.com.br/trending?geo=BR&category=${categoria}`;
 
   const page = await browser.newPage();
@@ -65,6 +78,8 @@ trendRouter.get('/', async (req: Request, res: Response) => {
         };
       })
   );
-  await browser.close();
+  
+  await client.setEx(cacheKey, 600, JSON.stringify(data));
+
   res.json(data);
 });
