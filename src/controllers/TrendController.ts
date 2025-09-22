@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
-import puppeteer from "puppeteer";
+import puppeteer, { Browser } from "puppeteer";
 import client, { connectRedis } from '../redis/client';
+
+
+let browser: Browser | null = null;
 
 interface Trend {
   id: string | null;
@@ -13,44 +16,52 @@ interface Trend {
 
 export const trendRouter = Router();
 
-trendRouter.get('/', async (req: Request, res: Response) => {
-  // Puppeteer launch
-  const browser = await puppeteer.launch({
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+async function getBrowser() {
+  if (!browser) {
+    browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
       args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage", // evita usar /dev/shm pequeno em containers
-      "--disable-gpu",
-      "--disable-software-rasterizer"
-    ],
-    headless: true,
-  });
-  
-  const { categoria } = req.query;
-
-  const client = await connectRedis(); 
-
-  const cacheKey = `trends:category:${ categoria ?? 0 }`;
-  const cached = await client.get(cacheKey);
-  
-  if (cached) {
-    browser.close();
-    return JSON.parse(cached);
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-software-rasterizer"
+      ],
+      headless: true,
+    });
   }
+  return browser;
+}
 
-  const url = `https://trends.google.com.br/trending?geo=BR&category=${categoria}`;
+trendRouter.get("/", async (req: Request, res: Response) => {
+  try {
+    const { categoria } = req.query;
+    const client = await connectRedis();
 
-  const page = await browser.newPage();
-  
-  await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-  page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+    const cacheKey = `trends:category:${categoria ?? 0}`;
+    const cached = await client.get(cacheKey);
 
-  await page.waitForSelector("tr.enOdEe-wZVHld-xMbwt");
+    console.log("passou aqui");
 
-  const data: Trend[] = await page.$$eval(
-    "tr.enOdEe-wZVHld-xMbwt",
-    rows =>
+    if (cached) {
+      console.log("chegouo (cache)");
+      return res.json(JSON.parse(cached));
+    }
+
+    console.log("passou aqui 2 (sem cache)");
+
+    // 🚀 Só abre Puppeteer se não tiver cache
+    const browser = await getBrowser();
+    const url = `https://trends.google.com.br/trending?geo=BR&category=${categoria}`;
+
+    const page = await browser.newPage();
+
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+
+    await page.waitForSelector("tr.enOdEe-wZVHld-xMbwt");
+
+    const data: Trend[] = await page.$$eval("tr.enOdEe-wZVHld-xMbwt", rows =>
       rows.map(row => {
         const div = row.querySelector("td:nth-of-type(5) > div:first-of-type");
 
@@ -64,21 +75,27 @@ trendRouter.get('/', async (req: Request, res: Response) => {
           duration:
             row.querySelector("td:nth-of-type(4) > div:first-of-type")?.textContent?.trim() || null,
           keywords: div
-        ? Array.from(div.querySelectorAll("span"))
-              .map(span => span.innerText.trim())
-              .filter(
-                t =>
-                  t.length > 0 &&
-                  !t.includes("Termo de pesquisa") &&
-                  !t.includes("query_stats") &&
-                  !t.includes("Explorar")
-              )
-          : []
+            ? Array.from(div.querySelectorAll("span"))
+                .map(span => span.innerText.trim())
+                .filter(
+                  t =>
+                    t.length > 0 &&
+                    !t.includes("Termo de pesquisa") &&
+                    !t.includes("query_stats") &&
+                    !t.includes("Explorar")
+                )
+            : []
         };
       })
-  );
-  
-  await client.setEx(cacheKey, 600, JSON.stringify(data));
+    );
 
-  res.json(data);
+    await client.setEx(cacheKey, 600, JSON.stringify(data));
+
+    await page.close(); // fecha só a página, mantém browser vivo
+
+    return res.json(data);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
 });
