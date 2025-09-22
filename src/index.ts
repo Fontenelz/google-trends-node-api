@@ -50,10 +50,15 @@ app.get("/categories", async (req: Request, res: Response) => {
 });
 
 app.get("/trends", async (req: Request, res: Response) => {
+  // Puppeteer launch
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: true 
+  });
+  
   const { categoria } = req.query;
   const url = `https://trends.google.com.br/trending?geo=BR&category=${categoria}`;
 
-  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   await page.goto(url, { waitUntil: "networkidle2" });
@@ -98,3 +103,5 @@ app.get("/trends", async (req: Request, res: Response) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
+
+

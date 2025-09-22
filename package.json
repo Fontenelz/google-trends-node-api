@@ -2,6 +2,7 @@
   "name": "google-trends-api",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "description": "API de scraping Google Trends com Puppeteer e Node.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
