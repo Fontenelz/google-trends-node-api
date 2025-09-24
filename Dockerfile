@@ -52,4 +52,4 @@ COPY start.sh ./
 RUN chmod +x start.sh
 
 EXPOSE 3000 6379
-CMD ["./start.sh"] ["node", "dist/index.js"]
+CMD ["node", "dist/index.js"]
